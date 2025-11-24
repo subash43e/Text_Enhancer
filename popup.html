@@ -1,0 +1,78 @@
+<!doctype html>
+<html>
+
+<head>
+    <title>AI Rephraser</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <div class="tab-nav">
+        <button class="tab-button active" data-tab="Main">Rephrase</button>
+        <button class="tab-button" data-tab="History">History</button>
+        <button id="settings-btn" class="gear-btn">
+            <img class="gear-icon" sizes="4" src="pngtree-cartoon-gear-icon-download-image_1251421.jpg"
+                alt="settings icon" />
+        </button>
+    </div>
+
+    <!-- Tab content -->
+    <div id="Main" class="tab-content">
+        <!-- Main content will be dynamically generated or shown here -->
+        <div id="rephrase-ui">
+            <!-- if api key is configured, show rephrase UI -->
+            <div id="rephrase-configured">
+                <textarea id="rephrase-input" placeholder="Enter text to rephrase..." rows="5"></textarea>
+                <button id="rephrase-btn">Rephrase</button>
+                <div id="rephrase-output"></div>
+                <button id="copy-btn" style="display: none">Copy</button>
+            </div>
+            <!-- if api key is not configured, show message -->
+            <div id="rephrase-not-configured" style="display: none">
+                <p>Please configure your API key in the settings.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="History" class="tab-content">
+        <h2>Rephrase History</h2>
+        <button id="clear-history-btn">Clear History</button>
+        <div id="history-list">
+            <!-- History items will be injected here by popup.js -->
+        </div>
+    </div>
+
+    <div id="Settings" class="tab-content" style="display: none">
+        <h2>API Key Settings</h2>
+
+        <div id="api-status"></div>
+
+        <div id="api-key-form">
+            <label for="provider-select">AI Provider:</label>
+            <select id="provider-select">
+                <option value="gemini">Google Gemini</option>
+                <option value="mistral">Mistral Codestral</option>
+            </select>
+
+            <label for="api-key">API Key:</label>
+            <input type="password" id="api-key" placeholder="Enter your API key" />
+
+            <div class="button-group">
+                <button id="save-btn">Save</button>
+            </div>
+        </div>
+
+        <div id="api-key-configured" style="display: none">
+            <p>API Key is configured.</p>
+            <div class="button-group">
+                <button id="delete-btn">Delete</button>
+            </div>
+        </div>
+
+        <div id="status"></div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+
+</html>
