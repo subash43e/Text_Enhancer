@@ -1,4 +1,3 @@
-
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "rephrase") {
     handleRephrase(message)
@@ -13,7 +12,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-
 function getStorage(keys) {
   return new Promise((resolve, reject) => {
     chrome.storage.local.get(keys, (result) => {
@@ -25,7 +23,6 @@ function getStorage(keys) {
     });
   });
 }
-
 
 function setStorage(items) {
   return new Promise((resolve, reject) => {
@@ -41,8 +38,12 @@ function setStorage(items) {
 
 async function handleRephrase(message) {
   try {
-
-    const storage = await getStorage(["selectedProvider", "geminiApiKey", "mistralApiKey", "apiKey"]);
+    const storage = await getStorage([
+      "selectedProvider",
+      "geminiApiKey",
+      "mistralApiKey",
+      "apiKey",
+    ]);
     const provider = storage.selectedProvider || "gemini";
 
     let apiKey;
@@ -57,27 +58,32 @@ async function handleRephrase(message) {
       apiUrl = "https://codestral.mistral.ai/v1/chat/completions";
       headers = {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`
+        Authorization: `Bearer ${apiKey}`,
       };
 
-      const prompt = `You are an expert multilingual text assistant. Your task is to correct and improve the following text. The text may be in English, 'Thanglish' (Tamil words written in English script), or Tamil.
-1.  Correct all grammatical errors.
-2.  Translate any Tamil or Thanglish words into their proper English equivalents.
-3.  Provide up to 3 alternative, improved versions of the fully translated and corrected English text.
-4.  Return ONLY the suggestions as a JSON array of strings, like this: ["suggestion 1", "suggestion 2", "suggestion 3"]. Do not include the original text or any other explanations.
+      const prompt = `You are a helpful dictionary assistant. 
+Your task is to provide the definition/meaning and Tamil translation for the English word/text provided below.
+
+Strictly output a valid JSON object with a single key "suggestions" containing an array of exactly two strings:
+1. The English definition.
+2. The Tamil translation.
+
+Example format:
+{
+  "suggestions": [
+    "Definition: [Insert definition here]",
+    "Tamil Translation: [Insert Tamil translation here]"
+  ]
+}
 
 The text to process is: "${message.text}"`;
 
       requestBody = {
         model: "codestral-latest",
-        messages: [
-          { role: "user", content: prompt }
-        ],
-        response_format: { type: "json_object" }
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
       };
-
     } else {
-
       apiKey = storage.geminiApiKey || storage.apiKey;
       if (!apiKey) return { error: "Gemini API Key not set." };
 
@@ -86,11 +92,20 @@ The text to process is: "${message.text}"`;
         "Content-Type": "application/json",
       };
 
-      const prompt = `You are an expert multilingual text assistant. Your task is to correct and improve the following text. The text may be in English, 'Thanglish' (Tamil words written in English script), or Tamil.
-1.  Correct all grammatical errors.
-2.  Translate any Tamil or Thanglish words into their proper English equivalents.
-3.  Provide up to 3 alternative, improved versions of the fully translated and corrected English text.
-4.  Return ONLY the suggestions as a JSON array of strings, like this: ["suggestion 1", "suggestion 2", "suggestion 3"]. Do not include the original text or any other explanations.
+      const prompt = `You are a helpful dictionary assistant. 
+Your task is to provide the definition/meaning and Tamil translation for the English word/text provided below.
+
+Strictly output a valid JSON object with a single key "suggestions" containing an array of exactly two strings:
+1. The English definition.
+2. The Tamil translation.
+
+Example format:
+{
+  "suggestions": [
+    "Definition: [Insert definition here]",
+    "Tamil Translation: [Insert Tamil translation here]"
+  ]
+}
 
 The text to process is: "${message.text}"`;
 
@@ -99,7 +114,6 @@ The text to process is: "${message.text}"`;
         generationConfig: { response_mime_type: "application/json" },
       };
     }
-
 
     const response = await fetch(apiUrl, {
       method: "POST",
@@ -110,29 +124,32 @@ The text to process is: "${message.text}"`;
     if (!response.ok) {
       const errorText = await response.text();
       console.error("API Error Details:", errorText);
-      throw new Error(`API call failed with status: ${response.status}. Details: ${errorText}`);
+      throw new Error(
+        `API call failed with status: ${response.status}. Details: ${errorText}`
+      );
     }
 
     const data = await response.json();
 
-
     let jsonResponseText;
 
     if (provider === "mistral") {
-
       if (data.choices && data.choices[0] && data.choices[0].message) {
         jsonResponseText = data.choices[0].message.content;
       }
     } else {
-
       const candidate = data.candidates && data.candidates[0];
-      if (candidate && candidate.content && candidate.content.parts && candidate.content.parts[0]) {
+      if (
+        candidate &&
+        candidate.content &&
+        candidate.content.parts &&
+        candidate.content.parts[0]
+      ) {
         jsonResponseText = candidate.content.parts[0].text;
       }
     }
 
     if (jsonResponseText) {
-
       jsonResponseText = jsonResponseText
         .replace(/```json/g, "")
         .replace(/```/g, "")
@@ -150,11 +167,9 @@ The text to process is: "${message.text}"`;
         return { error: "Failed to parse AI response." };
       }
 
-
       if (!Array.isArray(suggestions)) {
         suggestions = [];
       }
-
 
       if (suggestions.length > 0) {
         const historyResult = await getStorage({ rephraseHistory: [] });
@@ -177,13 +192,67 @@ The text to process is: "${message.text}"`;
   }
 }
 
-
-chrome.commands.onCommand.addListener((command) => {
+chrome.commands.onCommand.addListener(async (command) => {
   if (command === "rephrase-selection") {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs.length > 0) {
-        chrome.tabs.sendMessage(tabs[0].id, { action: "rephraseSelection" });
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tabs.length === 0) return;
+
+    const tab = tabs[0];
+
+    // Filter out restricted URLs to prevent errors
+    if (
+      !tab.url ||
+      tab.url.startsWith("chrome://") ||
+      tab.url.startsWith("edge://") ||
+      tab.url.startsWith("about:") ||
+      tab.url.startsWith("https://chrome.google.com/webstore")
+    ) {
+      return;
+    }
+
+    // Try sending message first
+    chrome.tabs.sendMessage(
+      tab.id,
+      { action: "rephraseSelection" },
+      (response) => {
+        // Check if message failed (likely because content script is missing)
+        if (chrome.runtime.lastError) {
+          console.log(
+            "Script not ready, injecting...",
+            chrome.runtime.lastError.message
+          );
+
+          // Dynamically inject script and css
+          chrome.scripting.executeScript(
+            {
+              target: { tabId: tab.id },
+              files: ["content.js"],
+            },
+            () => {
+              if (chrome.runtime.lastError) {
+                console.error(
+                  "Injection failed:",
+                  chrome.runtime.lastError.message
+                );
+                return;
+              }
+
+              // Inject CSS as well
+              chrome.scripting.insertCSS({
+                target: { tabId: tab.id },
+                files: ["content.css"],
+              });
+
+              // Retry sending message
+              setTimeout(() => {
+                chrome.tabs.sendMessage(tab.id, {
+                  action: "rephraseSelection",
+                });
+              }, 100);
+            }
+          );
+        }
       }
-    });
+    );
   }
 });

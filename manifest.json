@@ -4,13 +4,8 @@
   "name": "AI Rephraser",
   "version": "1.0",
   "description": "Rephrases your text using AI.",
-  "permissions": [
-    "storage",
-    "activeTab"
-  ],
-  "host_permissions": [
-    "https://generativelanguage.googleapis.com/"
-  ],
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": ["https://generativelanguage.googleapis.com/"],
   "icons": {
     "16": "icon16.png",
     "48": "icon48.png",
@@ -21,15 +16,9 @@
   },
   "content_scripts": [
     {
-      "matches": [
-        "<all_urls>"
-      ],
-      "js": [
-        "content.js"
-      ],
-      "css": [
-        "content.css"
-      ]
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"]
     }
   ],
   "action": {

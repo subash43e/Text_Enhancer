@@ -1,5 +1,4 @@
 document.addEventListener("DOMContentLoaded", () => {
-
   const tabButtons = document.querySelectorAll(".tab-button");
   const tabContents = document.querySelectorAll(".tab-content");
   const settingsBtn = document.getElementById("settings-btn");
@@ -13,24 +12,20 @@ document.addEventListener("DOMContentLoaded", () => {
   const apiKeyConfigured = document.getElementById("api-key-configured");
   const rephraseConfigured = document.getElementById("rephrase-configured");
   const rephraseNotConfigured = document.getElementById(
-    "rephrase-not-configured",
+    "rephrase-not-configured"
   );
 
-
   function openTab(tabName) {
-
     tabButtons.forEach((btn) => btn.classList.remove("active"));
     tabContents.forEach((content) => (content.style.display = "none"));
 
-
     const tabButton = document.querySelector(
-      `.tab-button[data-tab="${tabName}"]`,
+      `.tab-button[data-tab="${tabName}"]`
     );
     if (tabButton) {
       tabButton.classList.add("active");
     }
     document.getElementById(tabName).style.display = "block";
-
 
     if (tabName === "History") {
       loadHistory();
@@ -47,15 +42,14 @@ document.addEventListener("DOMContentLoaded", () => {
     openTab("Settings");
   });
 
-
   function updateApiStatus() {
     const provider = providerSelect.value;
-    const storageKey = provider === "mistral" ? "mistralApiKey" : "geminiApiKey";
+    const storageKey =
+      provider === "mistral" ? "mistralApiKey" : "geminiApiKey";
 
     chrome.storage.local.get([storageKey], (result) => {
       const key = result[storageKey];
       if (key) {
-
         let maskedKey =
           key.length > 8
             ? `${key.substring(0, 4)}••••${key.substring(key.length - 4)}`
@@ -69,21 +63,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
         rephraseConfigured.style.display = "block";
         rephraseNotConfigured.style.display = "none";
-      } else {
 
+        const rephraseInput = document.getElementById("rephrase-input");
+        if (rephraseInput) {
+          rephraseInput.focus();
+        }
+      } else {
         apiStatusDiv.innerHTML = `Status: No API Key found for <strong>${provider}</strong>.`;
         apiStatusDiv.style.color = "red";
 
         apiKeyForm.style.display = "block";
         apiKeyConfigured.style.display = "none";
 
-
         rephraseConfigured.style.display = "none";
         rephraseNotConfigured.style.display = "block";
       }
     });
   }
-
 
   providerSelect.addEventListener("change", () => {
     apiKeyInput.value = "";
@@ -92,10 +88,17 @@ document.addEventListener("DOMContentLoaded", () => {
     chrome.storage.local.set({ selectedProvider: providerSelect.value });
   });
 
+  apiKeyInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      saveButton.click();
+    }
+  });
+
   saveButton.addEventListener("click", () => {
     const apiKey = apiKeyInput.value.trim();
     const provider = providerSelect.value;
-    const storageKey = provider === "mistral" ? "mistralApiKey" : "geminiApiKey";
+    const storageKey =
+      provider === "mistral" ? "mistralApiKey" : "geminiApiKey";
 
     if (apiKey) {
       chrome.storage.local.set(
@@ -108,7 +111,7 @@ document.addEventListener("DOMContentLoaded", () => {
           setTimeout(() => {
             statusDiv.textContent = "";
           }, 3000);
-        },
+        }
       );
     } else {
       statusDiv.textContent = "Please enter an API key to save.";
@@ -121,13 +124,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   deleteButton.addEventListener("click", () => {
     const provider = providerSelect.value;
-    const storageKey = provider === "mistral" ? "mistralApiKey" : "geminiApiKey";
+    const storageKey =
+      provider === "mistral" ? "mistralApiKey" : "geminiApiKey";
 
-    if (
-      confirm(
-        `Are you sure you want to delete your ${provider} API Key?`,
-      )
-    ) {
+    if (confirm(`Are you sure you want to delete your ${provider} API Key?`)) {
       chrome.storage.local.remove([storageKey], () => {
         updateApiStatus();
         statusDiv.textContent = "API Key deleted.";
@@ -138,7 +138,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
   });
-
 
   function loadHistory() {
     const historyList = document.getElementById("history-list");
@@ -172,9 +171,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-
   openTab("Main");
-
 
   chrome.storage.local.get(["selectedProvider"], (result) => {
     if (result.selectedProvider) {
@@ -186,15 +183,23 @@ document.addEventListener("DOMContentLoaded", () => {
   const rephraseBtn = document.getElementById("rephrase-btn");
   const rephraseOutput = document.getElementById("rephrase-output");
   const copyBtn = document.getElementById("copy-btn");
+  const rephraseInput = document.getElementById("rephrase-input");
 
   if (rephraseBtn) {
+    if (rephraseInput) {
+      rephraseInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+          rephraseBtn.click();
+        }
+      });
+    }
     rephraseBtn.addEventListener("click", () => {
       const textToRephrase = document.getElementById("rephrase-input").value;
       if (!textToRephrase) {
         rephraseOutput.innerText = "Please enter some text to rephrase.";
         return;
       }
-
 
       const historyItem = {
         original: textToRephrase,
@@ -243,19 +248,17 @@ document.addEventListener("DOMContentLoaded", () => {
               rephraseOutput.innerText = "No suggestions found.";
             }
           }
-        },
+        }
       );
     });
   }
-
-
 
   const clearHistoryBtn = document.getElementById("clear-history-btn");
   if (clearHistoryBtn) {
     clearHistoryBtn.addEventListener("click", () => {
       if (
         confirm(
-          "Are you sure you want to clear your entire rephrasing history? This action cannot be undone.",
+          "Are you sure you want to clear your entire rephrasing history? This action cannot be undone."
         )
       ) {
         chrome.storage.local.set({ rephraseHistory: [] }, () => {
@@ -268,7 +271,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (copyBtn) {
     copyBtn.addEventListener("click", () => {
       const suggestions = Array.from(rephraseOutput.querySelectorAll("li")).map(
-        (li) => li.textContent,
+        (li) => li.textContent
       );
       const textToCopy = suggestions.join("\n");
       navigator.clipboard.writeText(textToCopy).then(() => {
