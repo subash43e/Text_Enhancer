@@ -1,78 +1,394 @@
 <!doctype html>
 <html>
+    <head>
+        <title>AI Rephraser</title>
+        <link rel="stylesheet" href="style.css" />
+    </head>
 
-<head>
-    <title>AI Rephraser</title>
-    <link rel="stylesheet" href="style.css" />
-</head>
-
-<body>
-    <div class="tab-nav">
-        <button class="tab-button active" data-tab="Main">Rephrase</button>
-        <button class="tab-button" data-tab="History">History</button>
-        <button id="settings-btn" class="gear-btn">
-            <img class="gear-icon" sizes="4" src="pngtree-cartoon-gear-icon-download-image_1251421.jpg"
-                alt="settings icon" />
-        </button>
-    </div>
-
-    <!-- Tab content -->
-    <div id="Main" class="tab-content">
-        <!-- Main content will be dynamically generated or shown here -->
-        <div id="rephrase-ui">
-            <!-- if api key is configured, show rephrase UI -->
-            <div id="rephrase-configured">
-                <textarea id="rephrase-input" placeholder="Enter text to rephrase..." rows="5"></textarea>
-                <button id="rephrase-btn">Rephrase</button>
-                <div id="rephrase-output"></div>
-                <button id="copy-btn" style="display: none">Copy</button>
-            </div>
-            <!-- if api key is not configured, show message -->
-            <div id="rephrase-not-configured" style="display: none">
-                <p>Please configure your API key in the settings.</p>
-            </div>
-        </div>
-    </div>
-
-    <div id="History" class="tab-content">
-        <h2>Rephrase History</h2>
-        <button id="clear-history-btn">Clear History</button>
-        <div id="history-list">
-            <!-- History items will be injected here by popup.js -->
-        </div>
-    </div>
-
-    <div id="Settings" class="tab-content" style="display: none">
-        <h2>API Key Settings</h2>
-
-        <div id="api-status"></div>
-
-        <div id="api-key-form">
-            <label for="provider-select">AI Provider:</label>
-            <select id="provider-select">
-                <option value="gemini">Google Gemini</option>
-                <option value="mistral">Mistral Codestral</option>
-            </select>
-
-            <label for="api-key">API Key:</label>
-            <input type="password" id="api-key" placeholder="Enter your API key" />
-
-            <div class="button-group">
-                <button id="save-btn">Save</button>
-            </div>
-        </div>
-
-        <div id="api-key-configured" style="display: none">
-            <p>API Key is configured.</p>
-            <div class="button-group">
-                <button id="delete-btn">Delete</button>
-            </div>
+    <body>
+        <div class="tab-nav">
+            <button
+                class="tab-button active"
+                data-tab="Rephrase"
+                aria-label="Rephrase"
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="nav-icon"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
+                </svg>
+            </button>
+            <button class="tab-button" data-tab="History" aria-label="History">
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="nav-icon"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                </svg>
+            </button>
+            <button id="settings-btn" class="gear-btn" aria-label="Settings">
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="gear-icon"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                    />
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                </svg>
+            </button>
         </div>
 
-        <div id="status"></div>
-    </div>
+        <!-- Tab content -->
+        <div id="Rephrase" class="tab-content" style="display: block">
+            <div id="rephrase-ui">
+                <!-- if api key is configured, show rephrase UI -->
+                <div id="rephrase-configured">
+                    <div
+                        id="offline-indicator"
+                        class="status-box warning"
+                        style="display: none; margin-bottom: 12px"
+                    >
+                        ⚠️ Offline Mode: Searching cached history only.
+                    </div>
 
-    <script src="popup.js"></script>
-</body>
+                    <div class="input-group" style="margin-bottom: 10px">
+                        <label
+                            for="home-provider-select"
+                            style="
+                                font-size: 12px;
+                                font-weight: 500;
+                                display: block;
+                                margin-bottom: 4px;
+                            "
+                            >AI Provider:</label
+                        >
+                        <select
+                            id="home-provider-select"
+                            style="
+                                width: 100%;
+                                padding: 8px;
+                                border-radius: 6px;
+                                border: 1px solid #ccc;
+                            "
+                        >
+                            <option value="gemini">Google Gemini</option>
+                            <option value="mistral">Mistral Codestral</option>
+                        </select>
+                    </div>
 
+                    <div class="input-group" style="margin-bottom: 10px">
+                        <label
+                            for="home-search-provider-select"
+                            style="
+                                font-size: 12px;
+                                font-weight: 500;
+                                display: block;
+                                margin-bottom: 4px;
+                            "
+                            >Web Search Provider:</label
+                        >
+                        <select
+                            id="home-search-provider-select"
+                            style="
+                                width: 100%;
+                                padding: 8px;
+                                border-radius: 6px;
+                                border: 1px solid #ccc;
+                            "
+                        >
+                            <option value="google">Google</option>
+                            <option value="bing">Bing</option>
+                            <option value="duckduckgo">DuckDuckGo</option>
+                            <option value="yahoo">Yahoo</option>
+                            <option value="baidu">Baidu</option>
+                            <option value="yandex">Yandex</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                    </div>
+
+                    <div class="input-wrapper" style="position: relative">
+                        <textarea
+                            id="rephrase-input"
+                            placeholder="Paste or type text to rephrase..."
+                            rows="5"
+                        ></textarea>
+                        <div
+                            id="autocomplete-list"
+                            class="autocomplete-items"
+                        ></div>
+                    </div>
+                    <div class="button-group">
+                        <button id="rephrase-btn" class="primary-btn">
+                            Rephrase Text
+                        </button>
+                        <button
+                            id="search-web-btn"
+                            class="secondary-btn"
+                            title="Search on Web"
+                        >
+                            Search Web
+                        </button>
+                        <button
+                            id="stop-btn"
+                            class="danger-btn"
+                            style="display: none; margin-left: 8px"
+                        >
+                            Stop
+                        </button>
+                    </div>
+
+                    <div
+                        id="rephrase-output-container"
+                        style="margin-top: 16px"
+                    >
+                        <div id="rephrase-output">
+                            <!-- Suggestions will appear here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- if api key is not configured, show message -->
+                <div
+                    id="rephrase-not-configured"
+                    class="empty-state"
+                    style="display: none"
+                >
+                    <p>
+                        ⚙️ Please configure your API key in Settings to start.
+                    </p>
+                    <button id="go-to-settings-btn" class="secondary-btn">
+                        Go to Settings
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="History" class="tab-content">
+            <div
+                style="
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 16px;
+                "
+            >
+                <h2>Recent Activity</h2>
+                <button
+                    id="clear-history-btn"
+                    class="danger-btn"
+                    style="width: auto; padding: 6px 12px; font-size: 12px"
+                >
+                    Clear
+                </button>
+            </div>
+            <div id="history-list">
+                <!-- History items injected here -->
+            </div>
+        </div>
+
+        <div id="Settings" class="tab-content">
+            <h2>Configuration</h2>
+
+            <!-- Offline Mode Toggle -->
+            <div
+                class="setting-group"
+                style="
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 20px;
+                    background: #fff;
+                    padding: 12px;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 12px;
+                "
+            >
+                <div>
+                    <label
+                        for="offline-mode-toggle"
+                        style="margin-bottom: 0; font-size: 14px"
+                        >Force Offline Mode</label
+                    >
+                    <p class="help-text" style="margin-top: 2px">
+                        Use local history only.
+                    </p>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="offline-mode-toggle" />
+                    <span class="slider round"></span>
+                </label>
+            </div>
+
+            <!-- Active Provider Selector -->
+            <div class="setting-group">
+                <label for="provider-select">Active AI Provider</label>
+                <select id="provider-select">
+                    <option value="gemini">Google Gemini</option>
+                    <option value="mistral">Mistral Codestral</option>
+                </select>
+                <p class="help-text">
+                    Select which AI will process your requests.
+                </p>
+            </div>
+
+            <hr class="divider" />
+
+            <!-- Search Engine Configuration -->
+            <div class="setting-group">
+                <label for="settings-search-provider-select"
+                    >Web Search Provider</label
+                >
+                <select
+                    id="settings-search-provider-select"
+                    style="
+                        width: 100%;
+                        padding: 8px;
+                        border-radius: 6px;
+                        border: 1px solid #ccc;
+                    "
+                >
+                    <option value="google">Google</option>
+                    <option value="bing">Bing</option>
+                    <option value="duckduckgo">DuckDuckGo</option>
+                    <option value="yahoo">Yahoo</option>
+                    <option value="baidu">Baidu</option>
+                    <option value="yandex">Yandex</option>
+                    <option value="custom">Custom</option>
+                </select>
+            </div>
+
+            <!-- Custom Search Configuration -->
+            <div
+                class="setting-group"
+                id="custom-search-settings-group"
+                style="display: none"
+            >
+                <label>Custom Search Configuration</label>
+                <div id="custom-search-container" style="margin-top: 8px">
+                    <label for="custom-search-url" style="font-size: 12px"
+                        >Custom URL (use %s for query)</label
+                    >
+                    <input
+                        type="text"
+                        id="custom-search-url"
+                        placeholder="https://duckduckgo.com/?q=%s"
+                    />
+                    <button
+                        id="save-search-settings-btn"
+                        class="primary-btn"
+                        style="margin-top: 8px; font-size: 12px; padding: 6px"
+                    >
+                        Save Custom URL
+                    </button>
+                </div>
+            </div>
+
+            <hr class="divider" />
+
+            <!-- Gemini Configuration -->
+            <div class="provider-card" id="gemini-card">
+                <div class="provider-header">
+                    <h3>Google Gemini</h3>
+                    <span id="gemini-status-badge" class="status-badge"
+                        >Not Configured</span
+                    >
+                </div>
+
+                <div id="gemini-input-container">
+                    <input
+                        type="password"
+                        id="gemini-key-input"
+                        placeholder="Enter Gemini API Key"
+                    />
+                    <div class="button-group">
+                        <button id="save-gemini-btn" class="primary-btn">
+                            Save Key
+                        </button>
+                    </div>
+                </div>
+
+                <div
+                    id="gemini-actions"
+                    style="display: none; margin-top: 10px"
+                >
+                    <button id="delete-gemini-btn" class="danger-btn outline">
+                        Remove Key
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mistral Configuration -->
+            <div class="provider-card" id="mistral-card">
+                <div class="provider-header">
+                    <h3>Mistral Codestral</h3>
+                    <span id="mistral-status-badge" class="status-badge"
+                        >Not Configured</span
+                    >
+                </div>
+
+                <div id="mistral-input-container">
+                    <input
+                        type="password"
+                        id="mistral-key-input"
+                        placeholder="Enter Mistral API Key"
+                    />
+                    <div class="button-group">
+                        <button id="save-mistral-btn" class="primary-btn">
+                            Save Key
+                        </button>
+                    </div>
+                </div>
+
+                <div
+                    id="mistral-actions"
+                    style="display: none; margin-top: 10px"
+                >
+                    <button id="delete-mistral-btn" class="danger-btn outline">
+                        Remove Key
+                    </button>
+                </div>
+            </div>
+
+            <div
+                id="global-status"
+                style="
+                    margin-top: 16px;
+                    min-height: 20px;
+                    font-size: 13px;
+                    text-align: center;
+                "
+            ></div>
+        </div>
+
+        <script src="popup.js"></script>
+    </body>
 </html>

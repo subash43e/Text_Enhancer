@@ -54,8 +54,8 @@ if (!window.textEnhancerInjected) {
     popup.className = "ai-rephraser-popup loading";
     popup.textContent = "Processing...";
 
+    document.body.appendChild(popup); // Append first to measure dimensions
     positionPopup(popup, rect);
-    document.body.appendChild(popup);
     activePopup = popup;
 
     document.addEventListener("mousedown", handleOutsideClick);
@@ -90,6 +90,7 @@ if (!window.textEnhancerInjected) {
 
     activePopup.appendChild(list);
 
+    // Reposition as content height changed
     positionPopup(activePopup, rect);
   }
 
@@ -98,11 +99,41 @@ if (!window.textEnhancerInjected) {
     const scrollLeft =
       window.pageXOffset || document.documentElement.scrollLeft;
 
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+
+    const popupHeight = popup.offsetHeight;
+    const popupWidth = popup.offsetWidth;
+
+    // Default: Position below the selection
     let top = rect.bottom + scrollTop + 10;
     let left = rect.left + scrollLeft;
 
-    if (left + 300 > window.innerWidth) {
-      left = window.innerWidth - 320;
+    // --- Horizontal Constraint ---
+    // If popup goes off the right edge of the viewport
+    if (rect.left + popupWidth > viewportWidth) {
+      // Align right edge of popup with right edge of viewport (minus padding)
+      left = scrollLeft + viewportWidth - popupWidth - 20;
+    }
+    // Don't let it go off the left edge
+    if (left < scrollLeft) {
+      left = scrollLeft + 10;
+    }
+
+    // --- Vertical Constraint ---
+    // Check if bottom of popup exceeds viewport bottom
+    // (We compare against the viewport bottom relative to the document)
+    const bottomOfPopup = top + popupHeight;
+    const bottomOfViewport = scrollTop + viewportHeight;
+
+    if (bottomOfPopup > bottomOfViewport) {
+      // Attempt to position ABOVE the selection
+      const topAbove = rect.top + scrollTop - popupHeight - 10;
+
+      // Only flip if it fits above (doesn't go off top of document/viewport)
+      if (topAbove >= scrollTop) {
+        top = topAbove;
+      }
     }
 
     popup.style.top = `${top}px`;

@@ -1,14 +1,37 @@
+let activeController = null;
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "rephrase") {
-    handleRephrase(message)
+    // Abort previous request if exists
+    if (activeController) {
+      activeController.abort();
+    }
+    activeController = new AbortController();
+
+    handleRephrase(message, activeController.signal)
       .then((response) => {
         sendResponse(response);
       })
       .catch((error) => {
-        console.error("Error in handleRephrase:", error);
-        sendResponse({ error: error.message || "Unknown error occurred." });
+        if (error.name === "AbortError") {
+          sendResponse({ error: "Request aborted." });
+        } else {
+          console.error("Error in handleRephrase:", error);
+          sendResponse({ error: error.message || "Unknown error occurred." });
+        }
+      })
+      .finally(() => {
+        activeController = null;
       });
     return true; // Keep the message channel open for async response
+  } else if (message.type === "abort") {
+    if (activeController) {
+      activeController.abort();
+      activeController = null;
+      sendResponse({ success: true });
+    } else {
+      sendResponse({ success: false, reason: "No active request." });
+    }
   }
 });
 
@@ -36,7 +59,7 @@ function setStorage(items) {
   });
 }
 
-async function handleRephrase(message) {
+async function handleRephrase(message, signal) {
   try {
     const storage = await getStorage([
       "selectedProvider",
@@ -61,7 +84,7 @@ async function handleRephrase(message) {
         Authorization: `Bearer ${apiKey}`,
       };
 
-      const prompt = `You are a helpful dictionary assistant. 
+      const prompt = `You are a helpful dictionary assistant.
 Your task is to provide the definition/meaning and Tamil translation for the English word/text provided below.
 
 Strictly output a valid JSON object with a single key "suggestions" containing an array of exactly two strings:
@@ -92,7 +115,7 @@ The text to process is: "${message.text}"`;
         "Content-Type": "application/json",
       };
 
-      const prompt = `You are a helpful dictionary assistant. 
+      const prompt = `You are a helpful dictionary assistant.
 Your task is to provide the definition/meaning and Tamil translation for the English word/text provided below.
 
 Strictly output a valid JSON object with a single key "suggestions" containing an array of exactly two strings:
@@ -119,13 +142,14 @@ The text to process is: "${message.text}"`;
       method: "POST",
       headers: headers,
       body: JSON.stringify(requestBody),
+      signal: signal,
     });
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error("API Error Details:", errorText);
       throw new Error(
-        `API call failed with status: ${response.status}. Details: ${errorText}`
+        `API call failed with status: ${response.status}. Details: ${errorText}`,
       );
     }
 
@@ -171,22 +195,14 @@ The text to process is: "${message.text}"`;
         suggestions = [];
       }
 
-      if (suggestions.length > 0) {
-        const historyResult = await getStorage({ rephraseHistory: [] });
-        let history = historyResult.rephraseHistory;
-
-        const historyItem = history[history.length - 1];
-        if (historyItem && historyItem.original === message.text) {
-          historyItem.suggestions = suggestions;
-          await setStorage({ rephraseHistory: history });
-        }
-      }
-
       return { suggestions: suggestions };
     } else {
       return { suggestions: [] };
     }
   } catch (error) {
+    if (error.name === "AbortError") {
+      throw error;
+    }
     console.error("Error in handleRephrase logic:", error);
     return { error: "Failed to get suggestions: " + error.message };
   }
@@ -219,7 +235,7 @@ chrome.commands.onCommand.addListener(async (command) => {
         if (chrome.runtime.lastError) {
           console.log(
             "Script not ready, injecting...",
-            chrome.runtime.lastError.message
+            chrome.runtime.lastError.message,
           );
 
           // Dynamically inject script and css
@@ -232,7 +248,7 @@ chrome.commands.onCommand.addListener(async (command) => {
               if (chrome.runtime.lastError) {
                 console.error(
                   "Injection failed:",
-                  chrome.runtime.lastError.message
+                  chrome.runtime.lastError.message,
                 );
                 return;
               }
@@ -249,10 +265,10 @@ chrome.commands.onCommand.addListener(async (command) => {
                   action: "rephraseSelection",
                 });
               }, 100);
-            }
+            },
           );
         }
-      }
+      },
     );
   }
 });
